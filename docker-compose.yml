@@ -1,0 +1,86 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: betalent-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - mysql
+      - redis
+      - gateway1
+      - gateway2
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=betalent
+      - DB_USERNAME=betalent
+      - DB_PASSWORD=secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GATEWAY1_URL=http://gateway1:3001
+      - GATEWAY2_URL=http://gateway2:3002
+    networks:
+      - betalent-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: betalent-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_DATABASE=betalent
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=betalent
+      - MYSQL_PASSWORD=secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - betalent-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:alpine
+    container_name: betalent-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - betalent-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 5
+
+  gateway1:
+    image: matheusprotzen/gateways-mock
+    container_name: betalent-gateway1
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+    networks:
+      - betalent-network
+
+  gateway2:
+    image: matheusprotzen/gateways-mock
+    container_name: betalent-gateway2
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+    networks:
+      - betalent-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  betalent-network:
+    driver: bridge
